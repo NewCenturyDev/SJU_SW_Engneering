@@ -1,2 +1,0 @@
-
-class login_logic:
