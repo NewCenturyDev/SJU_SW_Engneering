@@ -101,9 +101,9 @@ class UIUtil:
 
         treeview = tkinter.ttk.Treeview(self.window, columns=column_names, selectmode="browse")
         treeview.column("#0", width=0, stretch=False)
-        for (idx, column) in column_texts:
+        for idx, column_text in enumerate(column_texts):
             treeview.column("#" + str(1 + idx), width=column_widths[idx])
-            treeview.heading("#" + str(1 + idx), text=column)
+            treeview.heading("#" + str(1 + idx), text=column_text)
         treeview.place(x=x_pos, y=y_pos, width=position.width, height=position.height)
         return treeview
 
