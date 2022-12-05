@@ -24,7 +24,7 @@ class LoginUI(tkinter.Tk):
 
     # Methods
     def setup(self):
-        self.title("NewCentury Auto Trade")
+        self.title("NewCentury Auto Trader")
         self.ui_util = UIUtil(self, 400, 200)
         self.geometry(self.ui_util.calc_geometry())
         self.resizable(False, False)
@@ -50,4 +50,4 @@ class LoginUI(tkinter.Tk):
         self.credential_manager.load_credentials(self.account_select.current(), self.open_dashboard)
 
     def open_dashboard(self):
-        DashboardUI(self, self.credential_manager).setup()
+        DashboardUI(self, self.credential_manager.get_api()).setup()
