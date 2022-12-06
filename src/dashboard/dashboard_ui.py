@@ -4,9 +4,10 @@ from src.common.api_util import APIUtil
 from src.common.ui_util import UIUtil, Position
 from src.stock.service.stock_watch_serv import StockWatchServ
 from src.stock.ui.stock_detail_ui import StockDetailUI
+from src.stock.ui.stock_register_ui import StockRegisterUI
 
 
-class DashboardUI(tkinter.Toplevel):
+class DashboardUI(tkinter.Tk):
     parent = None
     ui_util = None
     api = None
@@ -25,7 +26,7 @@ class DashboardUI(tkinter.Toplevel):
         super().__init__()
         self.parent = parent_window
         self.api = api
-        self.stock_watch_serv = StockWatchServ.get_instance(self.api)
+        self.stock_watch_serv = StockWatchServ(self, self.api)
         self.setup()
 
     def setup(self):
@@ -33,8 +34,8 @@ class DashboardUI(tkinter.Toplevel):
         self.ui_util = UIUtil(self, 1615, 850)
         self.geometry(self.ui_util.calc_geometry())
         self.resizable(False, False)
+        self.protocol("WM_DELETE_WINDOW", self.close)
         self.launch()
-        # TODO: 종료 이벤트 설정하여 창이 닫히면 백그라운드 프로세스 강제 종료 시키기
 
     def launch(self):
         title = self.ui_util.make_title("Dashboard")
@@ -91,11 +92,17 @@ class DashboardUI(tkinter.Toplevel):
         self.watching_list_treeview = self.ui_util.make_treeview(
             ["code", "market", "category", "name", "price", "volume", "unit"],
             ["종목ID", "시장", "업종/테마", "종목명", "현재가", "거래량", "호가단위"],
-            [50, 100, 100, 150, 125, 150, 98],
+            [50, 100, 150, 150, 125, 125, 73],
             Position(20, 5, 775, 300),
             cst_x=None,
             cst_y=watching_list_label
         )
+        for stock in self.stock_watch_serv.get_watching_list():
+            self.watching_list_treeview.insert("", "end", values=(
+                stock.get_code(), stock.get_market(), stock.get_category(), stock.get_name(),
+                stock.get_price(), stock.get_volume(), stock.get_bid_unit()
+            ))
+
         add_stock_btn = self.ui_util.make_button(
             "감시종목 추가(Add Stock for Watching)",
             Position(20, 0, 225, 25),
@@ -160,7 +167,7 @@ class DashboardUI(tkinter.Toplevel):
             self.watching_list_treeview.insert("", "end", values=stock)
 
     def open_add_stock_to_watch_list(self):
-        StockDetailUI(self, self.api).setup()
+        StockRegisterUI(self, self.stock_watch_serv).setup()
 
     def start_trading(self):
         self.start_trading_btn.config(state="disabled")
@@ -171,3 +178,19 @@ class DashboardUI(tkinter.Toplevel):
         self.stop_trading_btn.config(state="disabled")
         self.start_trading_btn.config(state="normal")
         self.stock_watch_serv.stop_watching()
+
+    def refresh(self):
+        widget_list = self.winfo_children()
+        for widget in widget_list:
+            widget.destroy()
+        self.launch()
+        if self.stock_watch_serv.get_task() is not None and not self.stock_watch_serv.get_task().done():
+            self.start_trading_btn.config(state="disabled")
+            self.stop_trading_btn.config(state="normal")
+
+    def close(self):
+        # 루프가 실행 중인 경우 강제 중지
+        if self.stock_watch_serv.get_task() is not None and not self.stock_watch_serv.get_task().done():
+            self.stock_watch_serv.stop_watching()
+        self.destroy()
+        self.parent.deiconify()

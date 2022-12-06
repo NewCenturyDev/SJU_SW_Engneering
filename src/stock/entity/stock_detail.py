@@ -28,8 +28,8 @@ class StockDetail:
     _lastest_lowest_price = None
 
     def __init__(self, code, max_holdings, order_quantity, api):
-        self._auto_trader = AutoTradeServ.get_instance(api)
-        self.code = code
+        self._auto_trader = AutoTradeServ(api)
+        self._code = code
         self._max_holdings = max_holdings
         self._order_quantity = order_quantity
 
@@ -39,7 +39,7 @@ class StockDetail:
     def get_market(self):
         return self._market
 
-    def get_cagetory(self):
+    def get_category(self):
         return self._category
 
     def get_name(self):
@@ -50,6 +50,9 @@ class StockDetail:
 
     def get_price(self):
         return self._price
+
+    def set_price(self, price):
+        self._price = price
 
     def get_volume(self):
         return self._volume
@@ -105,13 +108,13 @@ class StockDetail:
         self._incoming_transactions.extend(new_txs)
         # 20개 거래내역을 모아서 20틱 봉 1개 만들고 밀어내기
         while len(self._incoming_transactions) >= 20:
-            tx_for_new_candle = self._incoming_transactions[0:20]
+            tx_for_new_candle = self._incoming_transactions[-20:]
             self._candle_1 = self._candle_2
             self._candle_2 = self._candle_3
             self._candle_3 = self._candle_4
             self._candle_4 = StockCandle(tx_for_new_candle)
             self._determine_turning_point()
-            self._incoming_transactions = self._incoming_transactions[20:]
+            self._incoming_transactions = self._incoming_transactions[0:-20]
         self._market_transactions.extend(new_txs)
 
     def update_market_status(self, market, category, price, volumn, bid_unit):
@@ -123,6 +126,8 @@ class StockDetail:
 
     # 시세 반전 여부 확인
     def _determine_turning_point(self):
+        if self._candle_3 is None or self._candle_4 is None:
+            return
         if self._candle_4.difference > 0 and self._candle_3.difference < 0:
             # 하락하다 상승반전
             self._candle_4.is_reversal = True

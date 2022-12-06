@@ -8,8 +8,8 @@ class StockCandle:
     lowest_price = 0
 
     def __init__(self, transactions):
-        self.start_price = transactions[0].get_price()
-        self.end_price = transactions[-1].get_price()
+        self.start_price = transactions[-1].get_price()
+        self.end_price = transactions[0].get_price()
         self.difference = float(self.end_price) - float(self.start_price)
         self._calc_highest(transactions)
         self._calc_lowest(transactions)

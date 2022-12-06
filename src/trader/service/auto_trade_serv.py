@@ -1,20 +1,16 @@
 import time
 
 from src.common.api_util import APIUtil
+from src.common.singleton import MetaSingleton
 from src.stock.entity.stock_order import StockOrder
 
 
-class AutoTradeServ:
-    _instance = None
+class AutoTradeServ(metaclass=MetaSingleton):
     _api = None
     _trade_list = []
 
-    @classmethod
-    def get_instance(cls, api):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._api = api
-        return cls._instance
+    def __init__(self, api):
+        self._api = api
 
     def make_buy_order(self, stock):
         new_order = StockOrder(stock, "매수(BUY)")

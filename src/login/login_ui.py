@@ -51,3 +51,4 @@ class LoginUI(tkinter.Tk):
 
     def open_dashboard(self):
         DashboardUI(self, self.credential_manager.get_api()).setup()
+        self.withdraw()

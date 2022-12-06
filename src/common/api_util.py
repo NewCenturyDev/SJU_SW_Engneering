@@ -1,5 +1,6 @@
 import tkinter
 import tkinter.messagebox
+import logging
 
 
 class APIUtil:
@@ -9,7 +10,9 @@ class APIUtil:
             result = method()
             on_success(result)
         except RuntimeError as err:
-            print(err)
+            logger = logging.getLogger()
+            logger.setLevel(logging.INFO)
+            logger.error(str(err), exc_info=True)
             if not silent:
                 tkinter.messagebox.showerror("API Error", str(err), parent=window)
             if on_fail is not None:
