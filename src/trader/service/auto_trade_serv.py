@@ -1,4 +1,5 @@
 import time
+import logging
 
 from src.common.api_util import APIUtil
 from src.common.singleton import MetaSingleton
@@ -28,13 +29,15 @@ class AutoTradeServ(metaclass=MetaSingleton):
 
     def order_ok(self, order):
         def callback(res):
+            logger = logging.getLogger()
+            logger.info(str(res))
             order.set_timestamp(res["ORD_TMD"])
             order.set_tx_no(res["ODNO"])
             self._trade_list.append(order)
         return callback
 
     def order_err(self, order):
-        def callback():
+        def callback(_):
             order.set_timestamp(time.strftime("%HH%MM%SS"))
             order.set_tx_no("에러(ERROR)")
             self._trade_list.append(order)
