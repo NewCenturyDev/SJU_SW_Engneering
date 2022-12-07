@@ -1,36 +1,40 @@
-import asyncio
-import requests
 import logging
 import time
+
+import requests
+import asyncio
 
 from src.common.singleton import MetaSingleton
 from src.login.credential_manager import CredentialManager
 from src.stock.entity.stock_detail import StockDetail
 from src.stock.entity.stock_transaction import StockTransaction
-from src.trader.service.auto_trade_serv import AutoTradeServ
+from src.stock.service.stock_balance_serv import StockBalanceServ
+from src.stock.service.auto_trade_serv import AutoTradeServ
 
 
 class StockWatchServ(metaclass=MetaSingleton):
     _api = None
     _task = None
-    _dashboard = None
+    _balance_serv = None
     _auto_trader = None
     _credentail_manager = None
     _watching_list = []
     _exit_signal = False
 
-    def __init__(self, dashboard, api):
+    def __init__(self, api):
         self._api = api
-        self._dashboard = dashboard
+        self._balance_serv = StockBalanceServ(api)
         self._auto_trader = AutoTradeServ(api)
         self._credentail_manager = CredentialManager()
 
-    def append_stock(self, code, max_holdings, order_quantity):
-        new_stock = StockDetail(code, max_holdings, order_quantity, self._api)
-        self._fetch_stock_detail(new_stock)
+    def get_task(self):
+        return self._task
 
-    def remove_stock(self, idx):
-        self._watching_list.pop(idx)
+    def get_auto_trader(self):
+        return self._auto_trader
+
+    def get_balance_serv(self):
+        return self._balance_serv
 
     def get_watching_list(self):
         return self._watching_list
@@ -38,54 +42,12 @@ class StockWatchServ(metaclass=MetaSingleton):
     def get_stock_detail(self, idx):
         return self._watching_list[idx]
 
-    def _fetch_stock_detail(self, new_stock):
-        # 증권사에서는 제공하지만 pykis library에 없는 API 직접 호출
-        key_info = self._credentail_manager.get_key_info()
-        try:
-            basic_detail_res = requests.get(
-                url="https://openapi.koreainvestment.com:9443/uapi/domestic-stock/v1/quotations/search-info",
-                headers={
-                    "content-type": "application/json; charset=utf-8",
-                    "authorization": self._api.token.value,
-                    "appkey": key_info["appkey"],
-                    "appsecret": key_info["appsecret"],
-                    "tr_id": "CTPF1604R",
-                    "custtype": "P"
-                }, params={
-                    "PDNO": new_stock.get_code(),
-                    "PRDT_TYPE_CD": "300"  # 300 국내주식 / 512 미국 나스닥 / 513 미국 뉴욕 / 529 미국 아멕스
-                }
-            )
-            new_stock.set_name(basic_detail_res.json()["output"]["prdt_abrv_name"])
-            advance_detail_raw_res = requests.get(
-                url=self._api.domain.get_url("/uapi/domestic-stock/v1/quotations/inquire-price"),
-                headers={
-                    "content-type": "application/json; charset=utf-8",
-                    "authorization": self._api.token.value,
-                    "appkey": key_info["appkey"],
-                    "appsecret": key_info["appsecret"],
-                    "tr_id": "FHKST01010100"
-                }, params={
-                    "FID_COND_MRKT_DIV_CODE": "J",
-                    "FID_INPUT_ISCD": new_stock.get_code()
-                }
-            )
-            advance_detail_res = advance_detail_raw_res.json()["output"]
-            new_stock.set_advance_details(
-                advance_detail_res["rprs_mrkt_kor_name"],
-                advance_detail_res["bstp_kor_isnm"],
-                advance_detail_res["stck_prpr"],
-                advance_detail_res["acml_vol"],
-                advance_detail_res["aspr_unit"]
-            )
-            self._watching_list.append(new_stock)
-        except Exception as err:
-            logger = logging.getLogger()
-            logger.setLevel(logging.INFO)
-            logger.error(str(err), exc_info=True)
+    def append_stock(self, code, max_holdings, order_quantity):
+        new_stock = StockDetail(code, max_holdings, order_quantity, self._api)
+        self._watching_list.append(self._balance_serv.fetch_stock_detail(new_stock))
 
-    def get_task(self):
-        return self._task
+    def remove_stock(self, idx):
+        self._watching_list.pop(idx)
 
     def start_watching(self):
         loop = asyncio.get_event_loop()
@@ -108,8 +70,8 @@ class StockWatchServ(metaclass=MetaSingleton):
                 print("[주식시장정보 감시 프로세스] 무한루프 가동 중 : " + str(iter_cnt) + "회차 \n"
                       + "[Market Watchdog Process] Infinite Loop is running : iteration " + str(iter_cnt))
                 iter_cnt += 1
-                for stock in self._watching_list:
-                    self._req_new_market_txs(stock)
+                for idx in range(0, len(self._watching_list)):
+                    self._req_new_market_txs(self._watching_list[idx])
                     time.sleep(0.1)
                 time.sleep(1)
 

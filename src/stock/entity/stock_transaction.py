@@ -1,10 +1,5 @@
 # The Stock Transaction Class
 class StockTransaction:
-    # Data Fields
-    _time = "Unknown"
-    _price = 0
-    _volume = 0
-
     # Constructor
     def __init__(self, time, price, volume):
         self._time = time
@@ -18,5 +13,5 @@ class StockTransaction:
     def get_price(self):
         return self._price
 
-    def get_volumn(self):
+    def get_volume(self):
         return self._volume

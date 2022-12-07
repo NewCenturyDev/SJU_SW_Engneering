@@ -1,7 +1,6 @@
 import time
 import logging
 
-from src.common.api_util import APIUtil
 from src.common.singleton import MetaSingleton
 from src.stock.entity.stock_order import StockOrder
 
@@ -13,17 +12,20 @@ class AutoTradeServ(metaclass=MetaSingleton):
     def __init__(self, api):
         self._api = api
 
+    def get_order_list(self):
+        return self._trade_list
+
     def make_buy_order(self, stock):
         new_order = StockOrder(stock, "매수(BUY)")
         APIUtil().call_api(
-            self, self._api.buy_kr_stock(stock.get_code(), stock.get_bid_unit(), 0),
+            self, self._api.buy_kr_stock(stock.get_code(), int(stock.get_order_quantity()), 0),
             self.order_ok(new_order), self.order_err(new_order), True
         )
 
     def make_sell_order(self, stock):
         new_order = StockOrder(stock, "매도(SELL)")
         APIUtil().call_api(
-            self, self._api.buy_kr_stock(stock.get_code(), stock.get_bid_unit(), 0),
+            self, self._api.buy_kr_stock(stock.get_code(), int(stock.get_order_quantity()), 0),
             self.order_ok(new_order), self.order_err(new_order), True
         )
 

@@ -1,6 +1,6 @@
 import tkinter
+import tkinter.messagebox
 
-from src.common.api_util import APIUtil
 from src.common.ui_util import UIUtil, Position
 from src.stock.service.stock_watch_serv import StockWatchServ
 from src.stock.ui.stock_detail_ui import StockDetailUI
@@ -12,6 +12,7 @@ class DashboardUI(tkinter.Tk):
     ui_util = None
     api = None
     stock_watch_serv = None
+    task = None
 
     # UI Fields
     cash_balance_value = None
@@ -26,7 +27,7 @@ class DashboardUI(tkinter.Tk):
         super().__init__()
         self.parent = parent_window
         self.api = api
-        self.stock_watch_serv = StockWatchServ(self, self.api)
+        self.stock_watch_serv = StockWatchServ(self.api)
         self.setup()
 
     def setup(self):
@@ -36,6 +37,7 @@ class DashboardUI(tkinter.Tk):
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self.close)
         self.launch()
+        self.refresh()
 
     def launch(self):
         title = self.ui_util.make_title("Dashboard")
@@ -49,7 +51,6 @@ class DashboardUI(tkinter.Tk):
         self.cash_balance_value = self.ui_util.make_entry(
             "", Position(5, 0, 150, 25), cash_balance_label, title, True
         )
-        APIUtil.call_api(self, self.api.get_kr_buyable_cash, self.fetch_cash_balance_ok, self.fetch_cash_balance_err)
 
         today_real_profit_label = self.ui_util.make_label(
             "Today's Realized Profit (KRW): ",
@@ -58,7 +59,7 @@ class DashboardUI(tkinter.Tk):
             cst_y=title
         )
         self.today_real_profit_value = self.ui_util.make_entry(
-            "", Position(5, 0, 150, 25), today_real_profit_label, title, True
+            "\\0", Position(5, 0, 150, 25), today_real_profit_label, title, True
         )
 
         self.start_trading_btn = self.ui_util.make_button(
@@ -77,10 +78,11 @@ class DashboardUI(tkinter.Tk):
             onclick=self.stop_trading
         )
         self.ui_util.make_button(
-            "설정(Settings)",
+            "즉시 새로고침(Refresh Now)",
             Position(20, 0, 200, 25),
             cst_x=self.stop_trading_btn,
-            cst_y=title
+            cst_y=title,
+            onclick=self.refresh
         )
 
         watching_list_label = self.ui_util.make_label(
@@ -97,11 +99,7 @@ class DashboardUI(tkinter.Tk):
             cst_x=None,
             cst_y=watching_list_label
         )
-        for stock in self.stock_watch_serv.get_watching_list():
-            self.watching_list_treeview.insert("", "end", values=(
-                stock.get_code(), stock.get_market(), stock.get_category(), stock.get_name(),
-                stock.get_price(), stock.get_volume(), stock.get_bid_unit()
-            ))
+        self.watching_list_treeview.bind("<Double-1>", self.open_stock_detail)
 
         add_stock_btn = self.ui_util.make_button(
             "감시종목 추가(Add Stock for Watching)",
@@ -125,9 +123,9 @@ class DashboardUI(tkinter.Tk):
             cst_y=self.watching_list_treeview
         )
         self.stock_balance_treeview = self.ui_util.make_treeview(
-            ["code", "name", "holdings", "price", "avr_bid_price", "bid_price", "eval_price"],
-            ["종목ID", "종목명", "보유수량", "현재가", "평균매입가", "매입금액", "평가금액"],
-            [50, 150, 75, 125, 125, 125, 123],
+            ["code", "name", "holdings", "price", "avr_bid_price", "bid_price", "eval_price", "profit_price"],
+            ["종목ID", "종목명", "보유수량", "현재가", "평균매입가", "매입금액", "평가금액", "평가손익금액"],
+            [50, 150, 75, 100, 100, 100, 100, 98],
             Position(20, 5, 775, 300),
             cst_x=None,
             cst_y=stock_balance_label
@@ -148,26 +146,70 @@ class DashboardUI(tkinter.Tk):
             cst_y=order_logs_label
         )
 
-    def fetch_cash_balance_ok(self, result):
-        self.cash_balance_value.configure(state="normal")
-        self.cash_balance_value.delete(0, "end")
-        self.cash_balance_value.insert(0, "\\" + format(result, ',') + "")
-        self.cash_balance_value.configure(state="readonly")
+    def reload_current_cash_balance(self):
+        try:
+            self.cash_balance_value.configure(state="normal")
+            self.cash_balance_value.delete(0, "end")
+            self.cash_balance_value.insert(
+                0, "\\" + format(self.stock_watch_serv.get_balance_serv().fetch_cash_balance(), ',')
+            )
+            self.cash_balance_value.configure(state="readonly")
+        except Exception:
+            self.cash_balance_value.configure(state="normal")
+            self.cash_balance_value.delete(0, "end")
+            self.cash_balance_value.insert(0, "ERROR")
+            self.cash_balance_value.configure(state="readonly")
 
-    def fetch_cash_balance_err(self, _):
-        self.cash_balance_value.configure(state="normal")
+    def reload_today_profit_realize(self):
+        realied_profit_total = 0
+        for row in self.stock_balance_treeview.get_children():
+            if (
+                    self.stock_balance_treeview.item(row)["evlu_pfls_amt"] is not None
+                    and self.stock_balance_treeview.item(row)["evlu_pfls_amt"].isnumeric()
+            ):
+                realied_profit_total += int(self.stock_balance_treeview.item(row)["evlu_pfls_amt"])
+        self.today_real_profit_value.configure(state="normal")
         self.cash_balance_value.delete(0, "end")
-        self.cash_balance_value.insert(0, "ERROR")
-        self.cash_balance_value.configure(state="readonly")
+        self.cash_balance_value.insert(0, "\\" + format(realied_profit_total, ','))
+        self.today_real_profit_value.configure(state="readonly")
 
-    def display_watching_list(self, watching_stocks):
-        for stock in self.watching_list_treeview.get_children():
-            self.watching_list_treeview.delete(stock)
-        for stock in watching_stocks:
-            self.watching_list_treeview.insert("", "end", values=stock)
+    def reload_watching_stock_treeview(self):
+        for child in self.watching_list_treeview.get_children():
+            self.watching_list_treeview.delete(child)
+        for stock in self.stock_watch_serv.get_watching_list():
+            self.watching_list_treeview.insert("", "end", values=(
+                stock.get_code(), stock.get_market(), stock.get_category(), stock.get_name(),
+                stock.get_price(), stock.get_volume(), stock.get_bid_unit()
+            ))
+
+    def reload_stock_balance_treeview(self):
+        stock_balance_service = self.stock_watch_serv.get_balance_serv()
+        for child in self.stock_balance_treeview.get_children():
+            self.stock_balance_treeview.delete(child)
+        for balance_row in stock_balance_service.fetch_stock_balance():
+            self.stock_balance_treeview.insert("", "end", values=balance_row)
+
+    def reload_order_logs_treeview(self):
+        auto_trader = self.stock_watch_serv.get_auto_trader()
+        for child in self.order_logs_treeview.get_children():
+            self.order_logs_treeview.delete(child)
+        for order in auto_trader.get_order_list():
+            self.order_logs_treeview.insert("", "end", values=order.get_order_detail_row())
 
     def open_add_stock_to_watch_list(self):
-        StockRegisterUI(self, self.stock_watch_serv).setup()
+        if self.stock_watch_serv.get_task() is not None and not self.stock_watch_serv.get_task().done():
+            tkinter.messagebox.showerror(
+                "Error", "투자 종목을 변경하기 전에 먼저 자동 투자를 정지 하십시오\n"
+                + "Stop auto trading before to change watching stocks"
+            )
+        else:
+            StockRegisterUI(self, self.stock_watch_serv).setup()
+
+    def open_stock_detail(self, _):
+        StockDetailUI(
+            self, self.stock_watch_serv,
+            self.watching_list_treeview.index(self.watching_list_treeview.selection()[0])
+        ).setup()
 
     def start_trading(self):
         self.start_trading_btn.config(state="disabled")
@@ -179,17 +221,18 @@ class DashboardUI(tkinter.Tk):
         self.start_trading_btn.config(state="normal")
         self.stock_watch_serv.stop_watching()
 
-    def refresh(self):
-        widget_list = self.winfo_children()
-        for widget in widget_list:
-            widget.destroy()
-        self.launch()
-        if self.stock_watch_serv.get_task() is not None and not self.stock_watch_serv.get_task().done():
-            self.start_trading_btn.config(state="disabled")
-            self.stop_trading_btn.config(state="normal")
+    def refresh(self, auto_refresh=True):
+        self.reload_current_cash_balance()
+        self.reload_today_profit_realize()
+        self.reload_watching_stock_treeview()
+        self.reload_stock_balance_treeview()
+        self.reload_order_logs_treeview()
+        if auto_refresh:
+            self.task = self.after(5000, self.refresh)
 
     def close(self):
         # 루프가 실행 중인 경우 강제 중지
+        self.after_cancel(self.task)
         if self.stock_watch_serv.get_task() is not None and not self.stock_watch_serv.get_task().done():
             self.stock_watch_serv.stop_watching()
         self.destroy()

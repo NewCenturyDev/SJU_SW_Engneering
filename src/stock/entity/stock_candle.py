@@ -1,13 +1,7 @@
 # The Tick Candle Class
 class StockCandle:
-    is_reversal = False
-    start_price = 0
-    end_price = 0
-    difference = 0
-    highest_price = 0
-    lowest_price = 0
-
     def __init__(self, transactions):
+        self.is_reversal = False
         self.start_price = transactions[-1].get_price()
         self.end_price = transactions[0].get_price()
         self.difference = float(self.end_price) - float(self.start_price)

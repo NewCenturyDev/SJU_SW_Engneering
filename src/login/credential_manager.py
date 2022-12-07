@@ -54,3 +54,9 @@ class CredentialManager(metaclass=MetaSingleton):
             return self._credentails_info["secret_test"]
         else:
             return self._credentails_info["secret"]
+
+    def get_account_info(self):
+        if self._account_idx == 0:
+            return self._credentails_info["account_test"]
+        else:
+            return self._credentails_info["account"]
