@@ -116,14 +116,14 @@ class StockDetail:
     def append_market_transactions(self, new_txs):
         self._incoming_transactions = new_txs + self._incoming_transactions
         # 20개 거래내역을 모아서 15틱 봉 1개 만들고 밀어내기
-        while len(self._incoming_transactions) >= 15:
-            tx_for_new_candle = self._incoming_transactions[-15:]
+        while len(self._incoming_transactions) >= 30:
+            tx_for_new_candle = self._incoming_transactions[-30:]
             self._candle_1 = self._candle_2
             self._candle_2 = self._candle_3
             self._candle_3 = self._candle_4
             self._candle_4 = StockCandle(tx_for_new_candle)
             self._determine_turning_point()
-            self._incoming_transactions = self._incoming_transactions[0:-15]
+            self._incoming_transactions = self._incoming_transactions[0:-30]
         self._market_transactions = new_txs + self._market_transactions
 
     # 시세 반전 여부 확인

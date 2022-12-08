@@ -17,6 +17,10 @@ class StockDetailUI(tkinter.Toplevel):
     _stock_name_entry = None
     _max_holdings_entry = None
     _order_quantity_entry = None
+    _llp_entry = None
+    _llp_outdated_entry = None
+    _lhp_entry = None
+    _lhp_outdated_entry = None
     _market_tx_log_treeview = None
     _modify_btn = None
 
@@ -29,7 +33,7 @@ class StockDetailUI(tkinter.Toplevel):
 
     def setup(self):
         self.title("NewCentury Auto Trader")
-        self._ui_util = UIUtil(self, 450, 800)
+        self._ui_util = UIUtil(self, 450, 900)
         self.geometry(self._ui_util.calc_geometry())
         self.resizable(False, False)
         self.protocol("WM_DELETE_WINDOW", self.close)
@@ -38,7 +42,7 @@ class StockDetailUI(tkinter.Toplevel):
             tkinter.messagebox.showerror("Error", "종목 정보 불러오기 실패\nStock Info Fetch Failure")
             self.destroy()
         self.launch()
-        self.reload_market_tx_log_treeview()
+        self.refresh()
 
     def launch(self):
         title = self._ui_util.make_title("Stock Detail")
@@ -78,12 +82,48 @@ class StockDetailUI(tkinter.Toplevel):
             str(self._stock.get_order_quantity()), Position(10, 0, 150, 25),
             cst_x=order_quantity_label, cst_y=self._max_holdings_entry, readonly=True
         )
+        llp_label = self._ui_util.make_label(
+            "최근 저점 가격(Latest Lowest Price):", Position(20, 0, 250, 25),
+            cst_x=None, cst_y=self._order_quantity_entry
+        )
+        llp_label.configure(anchor="w")
+        self._llp_entry = self._ui_util.make_entry(
+            str(self._stock.get_lastest_lowest_price()), Position(10, 0, 150, 25),
+            cst_x=llp_label, cst_y=self._order_quantity_entry, readonly=True
+        )
+        llp_outdated_label = self._ui_util.make_label(
+            "신규 저점 여부(Is New LLP):", Position(20, 0, 250, 25),
+            cst_x=None, cst_y=self._llp_entry
+        )
+        llp_outdated_label.configure(anchor="w")
+        self._llp_outdated_entry = self._ui_util.make_entry(
+            str(self._stock.is_new_llp()), Position(10, 0, 150, 25),
+            cst_x=llp_outdated_label, cst_y=self._llp_entry, readonly=True
+        )
+        lhp_label = self._ui_util.make_label(
+            "최근 고점 가격(Latest Highest Price):", Position(20, 0, 250, 25),
+            cst_x=None, cst_y=self._llp_outdated_entry
+        )
+        lhp_label.configure(anchor="w")
+        self._lhp_entry = self._ui_util.make_entry(
+            str(self._stock.get_lastest_highest_price()), Position(10, 0, 150, 25),
+            cst_x=lhp_label, cst_y=self._llp_outdated_entry, readonly=True
+        )
+        lhp_outdated_label = self._ui_util.make_label(
+            "신규 고점 여부(Is New LHP):", Position(20, 0, 250, 25),
+            cst_x=None, cst_y=self._lhp_entry
+        )
+        lhp_outdated_label.configure(anchor="w")
+        self._lhp_outdated_entry = self._ui_util.make_entry(
+            str(self._stock.is_new_lhp()), Position(10, 0, 150, 25),
+            cst_x=lhp_outdated_label, cst_y=self._lhp_entry, readonly=True
+        )
 
         tx_log_treeview_label = self._ui_util.make_label(
             "시장 거래체결 내역 (Market Transaction Logs)",
             Position(20, 0, 410, 25),
             cst_x=None,
-            cst_y=self._order_quantity_entry
+            cst_y=self._lhp_outdated_entry
         )
         self._market_tx_log_treeview = self._ui_util.make_treeview(
             ["timestamp", "price", "volume"],
@@ -116,7 +156,29 @@ class StockDetailUI(tkinter.Toplevel):
                 tx.get_price(),
                 tx.get_volume()
             ))
-        self._task = self.after(5000, self.reload_market_tx_log_treeview)
+
+    def reload_stock_detail(self):
+        self._llp_entry.configure(state="normal")
+        self._llp_outdated_entry.configure(state="normal")
+        self._lhp_entry.configure(state="normal")
+        self._lhp_outdated_entry.configure(state="normal")
+        self._llp_entry.delete(0, "end")
+        self._llp_outdated_entry.delete(0, "end")
+        self._lhp_entry.delete(0, "end")
+        self._lhp_outdated_entry.delete(0, "end")
+        self._llp_entry.insert(0, str(self._stock.get_lastest_lowest_price()))
+        self._llp_outdated_entry.insert(0, str(self._stock.is_new_llp()))
+        self._lhp_entry.insert(0, str(self._stock.get_lastest_highest_price()))
+        self._lhp_outdated_entry.insert(0, str(self._stock.is_new_lhp()))
+        self._llp_entry.configure(state="readonly")
+        self._llp_outdated_entry.configure(state="readonly")
+        self._lhp_entry.configure(state="readonly")
+        self._lhp_outdated_entry.configure(state="readonly")
+
+    def refresh(self):
+        self.reload_market_tx_log_treeview()
+        self.reload_stock_detail()
+        self._task = self.after(5000, self.refresh)
 
     def modify_mode(self):
         if self._stock_watch_serv.get_task() is not None and not self._stock_watch_serv.get_task().done():
