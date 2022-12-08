@@ -123,7 +123,7 @@ class StockWatchServ(metaclass=MetaSingleton):
         if last_price is None or stock.get_lastest_highest_price() is None:
             return
         # 즉시 매도 조건: 현재가가 LHP(최근 고점)보다 5호가 넘게 떨어진 경우
-        if int(last_price) < int(stock.get_lastest_highest_price()) - 5 * int(stock.get_bid_unit()):
+        if int(last_price) <= int(stock.get_lastest_highest_price()) - 5 * int(stock.get_bid_unit()):
             self._auto_trader.make_sell_order(stock)
             stock.lhp_outdated()
 
@@ -132,7 +132,7 @@ class StockWatchServ(metaclass=MetaSingleton):
         if last_price is None or stock.get_lastest_lowest_price() is None:
             return
         # 즉시 매수 조건: 현재가가 LLP(최근 저점)보다 5호가 넘게 올라간 경우
-        if int(last_price) > int(stock.get_lastest_lowest_price()) + 5 * int(stock.get_bid_unit()):
+        if int(last_price) >= int(stock.get_lastest_lowest_price()) + 5 * int(stock.get_bid_unit()):
             self._auto_trader.make_buy_order(stock)
             stock.llp_outdated()
 
