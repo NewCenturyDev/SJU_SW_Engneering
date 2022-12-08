@@ -26,6 +26,8 @@ class StockDetail:
         self._candle_4 = None
         self._lastest_highest_price = None
         self._lastest_lowest_price = None
+        self._is_new_lhp = False
+        self._is_new_llp = False
         self._auto_trader = AutoTradeServ(api)
 
     def get_code(self):
@@ -77,8 +79,14 @@ class StockDetail:
     def get_lastest_highest_price(self):
         return self._lastest_highest_price
 
+    def is_new_lhp(self):
+        return self._is_new_lhp
+
     def get_lastest_lowest_price(self):
         return self._lastest_lowest_price
+
+    def is_new_llp(self):
+        return self._is_new_llp
 
     def set_name(self, name):
         self._name = name
@@ -99,8 +107,14 @@ class StockDetail:
     def set_last_tx_update_timestamp(self, timestamp):
         self._last_tx_update_timestamp = timestamp
 
+    def llp_outdated(self):
+        self._is_new_llp = False
+
+    def lhp_outdated(self):
+        self._is_new_lhp = False
+
     def append_market_transactions(self, new_txs):
-        self._incoming_transactions.extend(new_txs)
+        self._incoming_transactions = new_txs + self._incoming_transactions
         # 20개 거래내역을 모아서 20틱 봉 1개 만들고 밀어내기
         while len(self._incoming_transactions) >= 20:
             tx_for_new_candle = self._incoming_transactions[-20:]
@@ -110,7 +124,7 @@ class StockDetail:
             self._candle_4 = StockCandle(tx_for_new_candle)
             self._determine_turning_point()
             self._incoming_transactions = self._incoming_transactions[0:-20]
-        self._market_transactions.extend(new_txs)
+        self._market_transactions = new_txs + self._market_transactions
 
     # 시세 반전 여부 확인
     def _determine_turning_point(self):
@@ -130,6 +144,7 @@ class StockDetail:
     # 투자지표 갱신 (새로운 봉이 만들어질 때마다)
     def _update_invest_params(self, is_lowest_point):
         if is_lowest_point:
+            self._is_new_llp = True
             if self._candle_3.lowest_price < self._candle_4.lowest_price:
                 # 3번봉 최저가가 저점인 경우
                 self._lastest_lowest_price = self._candle_3.lowest_price
@@ -137,6 +152,7 @@ class StockDetail:
                 # 4번봉 최저가가 저점인 경우
                 self._lastest_lowest_price = self._candle_4.lowest_price
         else:
+            self._is_new_lhp = True
             if self._candle_3.highest_price > self._candle_4.highest_price:
                 # 3번봉 최저가가 고점인 경우
                 self._lastest_highest_price = self._candle_3.highest_price

@@ -139,8 +139,8 @@ class DashboardUI(tkinter.Tk):
         )
         self.order_logs_treeview = self.ui_util.make_treeview(
             ["code", "name", "type", "price", "quantity", "timestamp", "tx_no"],
-            ["종목ID", "종목명", "매수/매도", "주문단가", "주문수량", "주문시각", "주문번호"],
-            [50, 150, 75, 125, 75, 175, 123],
+            ["종목ID", "종목명", "매수/매도", "주문가", "주문수량", "주문시각", "주문번호"],
+            [50, 150, 75, 75, 75, 100, 248],
             Position(20, 5, 775, 675),
             cst_x=self.watching_list_treeview,
             cst_y=order_logs_label
@@ -164,10 +164,12 @@ class DashboardUI(tkinter.Tk):
         realied_profit_total = 0
         for row in self.stock_balance_treeview.get_children():
             if (
-                    self.stock_balance_treeview.item(row)["evlu_pfls_amt"] is not None
-                    and self.stock_balance_treeview.item(row)["evlu_pfls_amt"].isnumeric()
+                    self.stock_balance_treeview.item(row) is not None
+                    and self.stock_balance_treeview.item(row)["values"] is not None
+                    and self.stock_balance_treeview.item(row)["values"][7] is not None
+                    and type(self.stock_balance_treeview.item(row)["values"][7]) is int
             ):
-                realied_profit_total += int(self.stock_balance_treeview.item(row)["evlu_pfls_amt"])
+                realied_profit_total += self.stock_balance_treeview.item(row)["values"][7]
         self.today_real_profit_value.configure(state="normal")
         self.cash_balance_value.delete(0, "end")
         self.cash_balance_value.insert(0, "\\" + format(realied_profit_total, ','))
@@ -193,7 +195,7 @@ class DashboardUI(tkinter.Tk):
         auto_trader = self.stock_watch_serv.get_auto_trader()
         for child in self.order_logs_treeview.get_children():
             self.order_logs_treeview.delete(child)
-        for order in auto_trader.get_order_list():
+        for order in auto_trader.get_order_list()[::-1]:
             self.order_logs_treeview.insert("", "end", values=order.get_order_detail_row())
 
     def open_add_stock_to_watch_list(self):
@@ -223,10 +225,10 @@ class DashboardUI(tkinter.Tk):
 
     def refresh(self, auto_refresh=True):
         self.reload_current_cash_balance()
-        self.reload_today_profit_realize()
         self.reload_watching_stock_treeview()
         self.reload_stock_balance_treeview()
         self.reload_order_logs_treeview()
+        self.reload_today_profit_realize()
         if auto_refresh:
             self.task = self.after(5000, self.refresh)
 

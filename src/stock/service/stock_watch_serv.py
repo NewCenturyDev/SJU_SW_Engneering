@@ -17,7 +17,7 @@ class StockWatchServ(metaclass=MetaSingleton):
     _task = None
     _balance_serv = None
     _auto_trader = None
-    _credentail_manager = None
+    _credential_manager = None
     _watching_list = []
     _exit_signal = False
 
@@ -25,7 +25,7 @@ class StockWatchServ(metaclass=MetaSingleton):
         self._api = api
         self._balance_serv = StockBalanceServ(api)
         self._auto_trader = AutoTradeServ(api)
-        self._credentail_manager = CredentialManager()
+        self._credential_manager = CredentialManager()
 
     def get_task(self):
         return self._task
@@ -77,7 +77,7 @@ class StockWatchServ(metaclass=MetaSingleton):
 
     def _req_new_market_txs(self, stock):
         # 증권사에서는 제공하지만 pykis library에 없는 API 직접 호출
-        key_info = self._credentail_manager.get_key_info()
+        key_info = self._credential_manager.get_key_info()
         try:
             response = requests.get(
                 url=self._api.domain.get_url("/uapi/domestic-stock/v1/quotations/inquire-ccnl"),
@@ -101,8 +101,10 @@ class StockWatchServ(metaclass=MetaSingleton):
         new_tx_list = []
         last_tx_update_timestamp = stock.get_last_tx_update_timestamp()
         if last_tx_update_timestamp is None or int(transactions[0]["stck_cntg_hour"]) > int(last_tx_update_timestamp):
-            self._check_immi_sell_condition(stock, transactions[0]["stck_prpr"])
-            self._check_immi_buy_condition(stock, transactions[0]["stck_prpr"])
+            if stock.is_new_lhp():
+                self._check_immi_sell_condition(stock, transactions[0]["stck_prpr"])
+            if stock.is_new_llp():
+                self._check_immi_buy_condition(stock, transactions[0]["stck_prpr"])
             for tx in transactions:
                 tx_timestamp = tx["stck_cntg_hour"]
                 tx_price = tx["stck_prpr"]
@@ -123,6 +125,7 @@ class StockWatchServ(metaclass=MetaSingleton):
         # 즉시 매도 조건: 현재가가 LHP(최근 고점)보다 5호가 넘게 떨어진 경우
         if int(last_price) < int(stock.get_lastest_highest_price()) - 5 * int(stock.get_bid_unit()):
             self._auto_trader.make_sell_order(stock)
+            stock.lhp_outdated()
 
     def _check_immi_buy_condition(self, stock, last_price):
         # 즉발 조건에 해당할 경우 시장가 매수
@@ -131,6 +134,7 @@ class StockWatchServ(metaclass=MetaSingleton):
         # 즉시 매수 조건: 현재가가 LLP(최근 저점)보다 5호가 넘게 올라간 경우
         if int(last_price) > int(stock.get_lastest_lowest_price()) + 5 * int(stock.get_bid_unit()):
             self._auto_trader.make_buy_order(stock)
+            stock.llp_outdated()
 
     def _check_3_line_sell_condition(self, stock):
         # 3봉 매도 타이밍에 해당하는지 확인 후 해당시 매도 수행

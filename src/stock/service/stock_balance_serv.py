@@ -7,11 +7,11 @@ from src.login.credential_manager import CredentialManager
 
 class StockBalanceServ(metaclass=MetaSingleton):
     _api = None
-    _credentail_manager = None
+    _credential_manager = None
 
     def __init__(self, api):
         self._api = api
-        self._credentail_manager = CredentialManager()
+        self._credential_manager = CredentialManager()
 
     def fetch_cash_balance(self):
         try:
@@ -24,10 +24,10 @@ class StockBalanceServ(metaclass=MetaSingleton):
 
     def fetch_stock_balance(self):
         # 증권사에서는 제공하지만 pykis library에 없는 API 직접 호출
-        key_info = self._credentail_manager.get_key_info()
-        account_info = self._credentail_manager.get_account_info()
+        key_info = self._credential_manager.get_key_info()
+        account_info = self._credential_manager.get_account_info()
         tr_id = "TTTC8434R"
-        if self._credentail_manager.get_account_idx() == 0:
+        if self._credential_manager.get_account_idx() == 0:
             tr_id = "VTTC8434R"
         try:
             stock_balance = requests.get(
@@ -67,7 +67,7 @@ class StockBalanceServ(metaclass=MetaSingleton):
 
     def fetch_stock_detail(self, new_stock):
         # 증권사에서는 제공하지만 pykis library에 없는 API 직접 호출
-        key_info = self._credentail_manager.get_key_info()
+        key_info = self._credential_manager.get_key_info()
         try:
             basic_detail_res = requests.get(
                 url="https://openapi.koreainvestment.com:9443/uapi/domestic-stock/v1/quotations/search-info",
