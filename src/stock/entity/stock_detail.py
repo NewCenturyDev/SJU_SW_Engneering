@@ -28,7 +28,6 @@ class StockDetail:
         self._lastest_lowest_price = None
         self._is_new_lhp = False
         self._is_new_llp = False
-        self._auto_trader = AutoTradeServ(api)
 
     def get_code(self):
         return self._code
