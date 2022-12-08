@@ -130,11 +130,11 @@ class StockDetail:
     def _determine_turning_point(self):
         if self._candle_3 is None or self._candle_4 is None:
             return
-        if self._candle_4.difference > 0 and self._candle_3.difference < 0:
+        if self._candle_4.difference > 0 and self._candle_3.difference <= 0:
             # 하락하다 상승반전
             self._candle_4.is_reversal = True
             self._update_invest_params(True)
-        elif self._candle_4.difference < 0 and self._candle_3.difference > 0:
+        elif self._candle_4.difference < 0 and self._candle_3.difference >= 0:
             # 상승하다 하락반전
             self._candle_4.is_reversal = True
             self._update_invest_params(False)
